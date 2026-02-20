@@ -49,6 +49,8 @@ export default defineUserConfig({
       },
     ],
     sidebarDepth: 0,
+    lastUpdated: false,
+    contributors: false,
     sidebar: {
       '/01-Linux基础/': [
         {
