@@ -1,0 +1,107 @@
+---
+- name: 配置 61 yum 源
+  copy:
+    content: |
+      [local-rpm]
+      name=local yum repo
+      baseurl={{ yum_repo_61 }}
+      enabled=1
+      gpgcheck=0
+    dest: /etc/yum.repos.d/61.repo
+
+- name: 清理 yum 缓存（slb6）
+  command: yum clean all
+  when: slb_role == 'backup'
+
+- name: 安装 nginx、keepalived
+  yum:
+    name: [nginx, keepalived]
+    state: present
+
+- name: 启动 nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: 部署 keepalived 检查脚本（master 用 check_web）
+  template:
+    src: check_web.sh.j2
+    dest: /etc/keepalived/check_web.sh
+    mode: '0755'
+  when: keepalived_script == 'check_web'
+
+- name: 部署 keepalived 检查脚本（backup 用 check_vip）
+  template:
+    src: check_vip.sh.j2
+    dest: /etc/keepalived/check_vip.sh
+    mode: '0755'
+  when: keepalived_script == 'check_vip'
+
+- name: slb6 对 master 免密
+  user:
+    name: root
+    generate_ssh_key: yes
+    ssh_key_type: rsa
+  when: slb_role == 'backup'
+
+- name: slb6 安装 sshpass
+  yum:
+    name: sshpass
+    state: present
+  when: slb_role == 'backup'
+
+- name: slb6 对 master 免密
+  shell: "sshpass -p '{{ ansible_password }}' ssh-copy-id -o StrictHostKeyChecking=no root@{{ slb_master_ip | default('10.0.0.5') }}"
+  when: slb_role == 'backup'
+  args: { warn: false }
+  changed_when: true
+
+- name: 部署 keepalived 配置
+  template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+  notify: restart keepalived
+
+- name: 创建证书目录（control）
+  file:
+    path: "{{ playbook_dir }}/.slb_cert"
+    state: directory
+    mode: '0700'
+  run_once: true
+  delegate_to: localhost
+
+- name: 在 control 生成证书（供 slb5/6 共用）
+  shell: >
+    openssl req -x509 -sha256 -nodes -days 36500
+    -newkey rsa:2048 -keyout {{ playbook_dir }}/.slb_cert/server.key
+    -out {{ playbook_dir }}/.slb_cert/server.crt
+    -subj "/C=CN/ST=Beijing/L=Beijing/O=MyCompany/CN=slb5"
+  run_once: true
+  delegate_to: localhost
+  args: { creates: "{{ playbook_dir }}/.slb_cert/server.crt" }
+
+- name: 拷贝证书到各 SLB
+  copy:
+    src: "{{ playbook_dir }}/.slb_cert/{{ item }}"
+    dest: "/tmp/{{ item }}"
+  loop: [server.key, server.crt]
+
+- name: 部署 nginx ssl 与 proxy_params
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - { src: ssl.conf.j2, dest: /etc/nginx/conf.d/ssl.conf }
+    - { src: proxy_params.j2, dest: /etc/nginx/proxy_params }
+
+- name: 重载 nginx
+  systemd:
+    name: nginx
+    state: reloaded
+
+- name: 启动 keepalived
+  systemd:
+    name: keepalived
+    state: started
+    enabled: yes

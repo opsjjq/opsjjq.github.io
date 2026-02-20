@@ -1,0 +1,18 @@
+---
+# 共用
+rsync_user: rsync_backup
+rsync_password: "qwe123"
+nfs_network: "172.16.1.0/24"
+yum_repo_61: "http://172.16.1.61:12345"
+
+# DB（WordPress 用）
+db_host: "172.16.1.51"
+mysql_wp_user: wang
+mysql_wp_password: "qwe123123"
+redis_password: "qwe123123"
+
+# NFS / 后端
+nfs_server_ip: "172.16.1.31"
+web_backend_ips:
+  - "172.16.1.7:80"
+  - "172.16.1.8:80"

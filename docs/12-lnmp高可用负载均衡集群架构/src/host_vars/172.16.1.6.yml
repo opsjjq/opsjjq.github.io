@@ -1,0 +1,8 @@
+---
+slb_role: backup
+keepalived_state: BACKUP
+keepalived_priority: 100
+keepalived_router_id: lb-6
+keepalived_script: check_vip
+slb_generate_cert: false
+slb_master_ip: "10.0.0.5"

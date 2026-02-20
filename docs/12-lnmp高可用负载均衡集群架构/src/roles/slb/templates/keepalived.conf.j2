@@ -1,0 +1,24 @@
+global_defs {
+    router_id {{ keepalived_router_id }}
+}
+vrrp_script {{ keepalived_script }} {
+    script "/etc/keepalived/{{ keepalived_script }}.sh"
+    interval 5
+}
+vrrp_instance VIP_1 {
+    state {{ keepalived_state }}
+    interface eth0
+    virtual_router_id 50
+    priority {{ keepalived_priority }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+    virtual_ipaddress {
+        10.0.0.3
+    }
+    track_script {
+        {{ keepalived_script }}
+    }
+}

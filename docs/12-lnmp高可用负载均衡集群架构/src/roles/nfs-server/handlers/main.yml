@@ -1,0 +1,7 @@
+---
+- name: reload nfs
+  command: exportfs -ra
+- name: restart lsyncd
+  systemd:
+    name: lsyncd
+    state: restarted

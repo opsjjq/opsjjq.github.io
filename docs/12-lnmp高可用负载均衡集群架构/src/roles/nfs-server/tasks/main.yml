@@ -1,0 +1,51 @@
+---
+- name: 安装 nfs-utils、rpcbind、lsyncd
+  yum:
+    name: [nfs-utils, rpcbind, lsyncd]
+    state: present
+
+- name: 创建 www 用户
+  user:
+    name: www
+    uid: 1500
+    system: yes
+    shell: /sbin/nologin
+    create_home: no
+
+- name: 创建 NFS 共享目录
+  file:
+    path: /nfs-data
+    state: directory
+    owner: www
+    group: www
+
+- name: 配置 /etc/exports
+  copy:
+    content: |
+      /nfs-data {{ nfs_network }}(rw,sync,all_squash,anonuid=1500,anongid=1500)
+    dest: /etc/exports
+  notify: reload nfs
+
+- name: 创建 lsyncd 密码文件
+  copy:
+    content: "{{ rsync_password }}"
+    dest: /etc/rsync.pwd
+    mode: '0600'
+
+- name: 部署 lsyncd 配置
+  template:
+    src: lsyncd.conf.j2
+    dest: /etc/lsyncd.conf
+  notify: restart lsyncd
+
+- name: 创建 lsyncd 日志目录
+  file:
+    path: /var/log/lsyncd
+    state: directory
+
+- name: 启动并启用 rpcbind、nfs、lsyncd
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop: [rpcbind, nfs, lsyncd]

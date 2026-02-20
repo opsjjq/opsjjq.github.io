@@ -1,0 +1,38 @@
+---
+- name: 安装 rsync
+  yum:
+    name: rsync
+    state: present
+
+- name: 创建 www 用户
+  user:
+    name: www
+    uid: 1000
+    system: yes
+    shell: /sbin/nologin
+    create_home: no
+
+- name: 创建备份目录
+  file:
+    path: /backup
+    state: directory
+    owner: www
+    group: www
+
+- name: 部署 rsyncd 配置
+  template:
+    src: rsyncd.conf.j2
+    dest: /etc/rsyncd.conf
+  notify: restart rsyncd
+
+- name: 创建密码文件
+  copy:
+    content: "{{ rsync_user }}:{{ rsync_password }}"
+    dest: /etc/rsync.passwd
+    mode: '0600'
+
+- name: 启动并启用 rsyncd
+  systemd:
+    name: rsyncd
+    state: started
+    enabled: yes

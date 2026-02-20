@@ -1,0 +1,6 @@
+#!/bin/bash
+MASTER_VIP=$(ssh {{ slb_master_ip | default('10.0.0.5') }} ip a|grep 10.0.0.3|wc -l)
+MY_VIP=$(ip a|grep 10.0.0.3|wc -l)
+if [ ${MASTER_VIP} == 1 -a ${MY_VIP} == 1 ]; then
+   systemctl stop keepalived
+fi

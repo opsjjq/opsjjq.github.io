@@ -1,0 +1,43 @@
+---
+# MySQL
+- name: 安装 MySQL 5.7 源
+  yum:
+    name: http://mirrors.ustc.edu.cn/mysql-repo/mysql57-community-release-el7.rpm
+    state: present
+
+- name: 关闭 MySQL 源 gpgcheck
+  shell: sed -i '/gpgcheck=1/c gpgcheck=0' /etc/yum.repos.d/mysql-community*.repo
+  args: { warn: false }
+
+- name: 安装 mysql-community-server
+  yum:
+    name: mysql-community-server
+    state: present
+
+- name: 修改 mysqld 初始化参数
+  replace:
+    path: /usr/bin/mysqld_pre_systemd
+    regexp: '--initialize '
+    replace: '--initialize-insecure '
+  ignore_errors: true
+
+- name: 启用并启动 mysqld
+  systemd:
+    name: mysqld
+    enabled: yes
+    state: started
+
+- name: 等待 3306 端口
+  wait_for:
+    port: 3306
+    delay: 5
+    timeout: 60
+
+- name: 创建库与用户（WordPress）
+  shell: |
+    mysql -e "create database if not exists wordpress default charset 'utf8';"
+    mysql -e "set global validate_password_policy=LOW;" 2>/dev/null || true
+    mysql -e "create user if not exists '{{ mysql_wp_user }}'@'%' identified by '{{ mysql_wp_password }}';"
+    mysql -e "grant all on wordpress.* to '{{ mysql_wp_user }}'@'%';"
+    mysql -e "flush privileges;"
+  args: { warn: false }

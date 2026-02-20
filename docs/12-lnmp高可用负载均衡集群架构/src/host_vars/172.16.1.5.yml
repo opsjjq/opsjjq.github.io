@@ -1,0 +1,7 @@
+---
+slb_role: master
+keepalived_state: MASTER
+keepalived_priority: 150
+keepalived_router_id: lb-5
+keepalived_script: check_web
+slb_generate_cert: true

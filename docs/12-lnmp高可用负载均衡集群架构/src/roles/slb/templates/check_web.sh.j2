@@ -1,0 +1,6 @@
+#!/bin/bash
+NGINX_STATUS=$(ps -ef|grep ngin[x]|wc -l)
+if [ ${NGINX_STATUS} == 0 ]; then
+   systemctl restart nginx
+   [ $? -eq 1 ] && systemctl stop keepalived
+fi

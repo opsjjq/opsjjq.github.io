@@ -1,0 +1,25 @@
+---
+- name: 部署 Rsync（41）
+  hosts: backup
+  roles:
+    - rsync-server
+
+- name: 部署 NFS（31）
+  hosts: nfs
+  roles:
+    - nfs-server
+
+- name: 部署 DB MySQL（51）
+  hosts: db
+  roles:
+    - db
+
+- name: 部署 Web（7、8）
+  hosts: web
+  roles:
+    - web
+
+- name: 部署 SLB（5、6）
+  hosts: slb
+  roles:
+    - slb

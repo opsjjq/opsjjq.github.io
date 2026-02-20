@@ -1,0 +1,125 @@
+---
+- name: 配置 61 yum 源
+  copy:
+    content: |
+      [local61]
+      name=Local YUM Repository on 61
+      baseurl={{ yum_repo_61 }}
+      gpgcheck=0
+      enabled=1
+    dest: /etc/yum.repos.d/61.repo
+
+- name: 创建 www 用户与组
+  group:
+    name: www
+    gid: 666
+  user:
+    name: www
+    uid: 666
+    group: www
+    system: yes
+    shell: /sbin/nologin
+    create_home: no
+
+- name: 安装 nginx
+  yum:
+    name: nginx
+    state: present
+
+- name: 启动并启用 nginx
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: 添加 PHP 7.1 源（webtatic）
+  yum:
+    name: https://mirror.webtatic.com/yum/el7/webtatic-release.rpm
+    state: present
+  ignore_errors: true
+
+- name: 安装 PHP 7.1 与扩展
+  yum:
+    name:
+      - php71w-cli
+      - php71w-common
+      - php71w-fpm
+      - php71w-mysqlnd
+      - php71w-gd
+      - php71w-mbstring
+      - php71w-xml
+      - php71w-opcache
+    state: present
+  ignore_errors: true
+
+- name: PHP-FPM 运行用户
+  replace:
+    path: /etc/php-fpm.d/www.conf
+    regexp: '^user = .*'
+    replace: 'user = www'
+
+- name: PHP-FPM 运行组
+  replace:
+    path: /etc/php-fpm.d/www.conf
+    regexp: '^group = .*'
+    replace: 'group = www'
+
+- name: 启动 php-fpm
+  systemd:
+    name: php-fpm
+    state: started
+    enabled: yes
+
+- name: 部署 wordpress 站点配置
+  template:
+    src: wordpress.conf.j2
+    dest: /etc/nginx/conf.d/wordpress.conf
+
+- name: 创建站点目录
+  file:
+    path: /code/wordpress
+    state: directory
+    owner: www
+    group: www
+
+- name: 部署 wp-config.php
+  template:
+    src: wp-config.php.j2
+    dest: /code/wordpress/wp-config.php
+    owner: www
+    group: www
+
+- name: 安装 nfs-utils、rpcbind
+  yum:
+    name: [nfs-utils, rpcbind]
+    state: present
+
+- name: 启动 rpcbind
+  systemd:
+    name: rpcbind
+    state: started
+    enabled: yes
+
+- name: 创建 uploads 目录
+  file:
+    path: /code/wordpress/wp-content/uploads
+    state: directory
+    owner: www
+    group: www
+
+- name: 挂载 NFS 到 uploads
+  mount:
+    path: /code/wordpress/wp-content/uploads
+    src: "{{ nfs_server_ip }}:/nfs-data"
+    fstype: nfs
+    state: mounted
+    opts: defaults,_netdev
+
+- name: 写入 fstab
+  lineinfile:
+    path: /etc/fstab
+    line: "{{ nfs_server_ip }}:/nfs-data  /code/wordpress/wp-content/uploads  nfs4  defaults,_netdev  0  0"
+    state: present
+
+- name: 重载 nginx
+  command: nginx -s reload
