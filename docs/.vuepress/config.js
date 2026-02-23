@@ -1,12 +1,19 @@
 import { viteBundler } from '@vuepress/bundler-vite'
 import { defaultTheme } from '@vuepress/theme-default'
 import { defineUserConfig } from 'vuepress'
+import { slimsearchPlugin } from '@vuepress/plugin-slimsearch'
 
 export default defineUserConfig({
   base: '/',
   lang: 'zh-CN',
   title: 'wyp运维技术博客',
   description: 'Linux运维、DevOps、容器编排等技术笔记',
+
+  plugins: [
+    slimsearchPlugin({
+      indexContent: true,
+    }),
+  ],
 
   bundler: viteBundler({
     viteOptions: {
@@ -48,7 +55,7 @@ export default defineUserConfig({
         ]
       },
     ],
-    sidebarDepth: 0,
+    sidebarDepth: 2,
     lastUpdated: false,
     contributors: false,
     sidebar: {
